@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能问答助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px 15px;
+            background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
+            min-height: 100vh;
+        }
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 600;
+            font-size: 2.2rem;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        #chat-container {
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            height: 70vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+        #messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #f8fafc;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f8fafc;
+        }
+        #messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        #messages::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+        #messages::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 3px;
+        }
+        .message {
+            margin-bottom: 20px;
+            padding: 12px 18px;
+            border-radius: 18px;
+            max-width: 75%;
+            word-wrap: break-word;
+            line-height: 1.6;
+            font-size: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .user-message {
+            background: linear-gradient(135deg, #165dff 0%, #007bff 100%);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .bot-message {
+            background-color: #ffffff;
+            color: #2d3748;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+        #input-area {
+            display: flex;
+            padding: 20px;
+            border-top: 1px solid #e2e8f0;
+            background-color: #ffffff;
+            align-items: flex-end;
+        }
+        #user-input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 1px solid #e2e8f0;
+            border-radius: 30px;
+            margin-right: 12px;
+            font-size: 15px;
+            outline: none;
+            resize: none;
+            height: auto;
+            min-height: 50px;
+            max-height: 150px;
+            line-height: 22px;
+            overflow-y: auto;
+            font-family: inherit;
+        }
+        #user-input:focus {
+            border-color: #165dff;
+            box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.1);
+        }
+        #user-input::placeholder {
+            color: #a0aec0;
+        }
+        #send-button {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #165dff 0%, #007bff 100%);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            white-space: nowrap;
+            height: 50px;
+            flex-shrink: 0;
+        }
+        #send-button:hover {
+            background: linear-gradient(135deg, #0e4bdb 0%, #0056b3 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(22, 93, 255, 0.2);
+        }
+        #send-button:active {
+            transform: translateY(0);
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top-color: #165dff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 10px 5px;
+            }
+            h1 {
+                font-size: 1.6rem;
+                margin-bottom: 20px;
+            }
+            #chat-container {
+                height: 85vh;
+                border-radius: 12px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            }
+            .message {
+                max-width: 85%;
+                padding: 10px 15px;
+                font-size: 14px;
+            }
+            #input-area {
+                padding: 15px;
+            }
+            #user-input {
+                padding: 12px 15px;
+                font-size: 14px;
+            }
+            #send-button {
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>智能问答助手</h1>
+    <div id="chat-container">
+        <div id="messages"></div>
+        <div id="input-area">
+            <textarea id="user-input" placeholder="请输入您的问题..." rows="1"></textarea>
+            <button id="send-button">发送</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+        const messagesContainer = document.getElementById('messages');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+
+        // 自动调整 textarea 高度的函数
+        function autoResizeTextarea() {
+            userInput.style.height = 'auto';
+            const newHeight = Math.min(Math.max(userInput.scrollHeight, 50), 150);
+            userInput.style.height = newHeight + 'px';
+        }
+
+        userInput.addEventListener('input', autoResizeTextarea);
+
+        const API_ENDPOINT = 'https://api.coze.cn/v3/chat';
+        const API_KEY = 'pat_nzPU1UIpuVMIkqDnU8tE4r2PGWJXgVTShkq5CWqWFQ6fUtKRFHrMxE1WvlzpJI7t';
+        const BOT_ID = '7595891620550115382';
+        const USER_ID = '123456789';
+
+        // 判断是否为JSON字符串
+        function isJsonString(str) {
+            try {
+            JSON.parse(str);
+            return true;
+            } catch (e) {
+            return false;
+            }
+        }
+
+        // 格式化内容：处理JSON、图片和换行
+        function formatContent(content) {
+            // 去除连续重复的句子
+            const sentences = content.split('。');
+            const uniqueSentences = sentences.filter((s, index) => 
+                s.trim() && sentences.indexOf(s) === index
+            );
+            content = uniqueSentences.join('。');
+            
+            // 移除markdown代码块标记
+            let formatted = content.replace(/```json\n?|```\n?/g, '');
+            
+            // 检测是否为JSON
+            if (isJsonString(formatted)) {
+            try {
+                const jsonObj = JSON.parse(formatted);
+                return `<pre class="json-block"><code>${JSON.stringify(jsonObj, null, 2)}</code></pre>`;
+            } catch (e) {
+                // JSON解析失败，按普通文本处理
+            }
+            }
+            
+            // 处理Markdown图片语法: ![alt](url)
+            formatted = formatted.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px; display: block;">');
+            
+            // 处理加粗语法: **text**
+            formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            
+            // 保留换行
+            return formatted.replace(/\n/g, '<br>');
+        }
+
+        // 发送消息到Coze智能体（流式响应）
+        async function sendMessageToCoze(message) {
+            try {
+            addMessage(message, 'user');
+            
+            // 创建bot消息容器
+            const botMessageElement = document.createElement('div');
+            botMessageElement.classList.add('message', 'bot-message');
+            messagesContainer.appendChild(botMessageElement);
+            
+            // 初始加载提示
+            botMessageElement.innerHTML = '<span class="loading"></span> 思考中...';
+
+            const requestData = {
+                bot_id: BOT_ID,
+                user_id: USER_ID,
+                stream: true,
+                additional_messages: [
+                {
+                    content: message,
+                    content_type: "text",
+                    role: "user",
+                    type: "question"
+                }
+                ]
+            };
+
+            const response = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_KEY}`
+                },
+                body: JSON.stringify(requestData)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+            }
+
+            // 用于累积完整响应内容
+            let fullContent = '';
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                if (line.startsWith('data:') && line.length > 5) {
+                    const dataStr = line.substring(5).trim();
+                    if (!dataStr || dataStr === '[DONE]') continue;
+
+                    try {
+                    const data = JSON.parse(dataStr);
+                    
+                    // 处理不同类型的消息
+                    if (data.type === 'answer' && data.content_type === 'text') {
+                        // 实时增量渲染：追加新内容
+                        if (data.content) {
+                        fullContent += data.content;
+                        botMessageElement.innerHTML = formatContent(fullContent);
+                        }
+                    }
+                    } catch (e) {
+                    console.warn('JSON parse error:', e, dataStr);
+                    }
+                }
+                }
+            }
+
+            // 确保最终格式化显示
+            if (!fullContent) {
+                botMessageElement.innerHTML = '未收到有效回答。';
+                botMessageElement.style.color = '#e53e3e';
+            }
+
+            } catch (error) {
+            console.error('请求失败:', error);
+            addMessage('抱歉，请求过程中发生错误：' + error.message, 'bot');
+            }
+        }
+
+        // 添加消息到聊天界面
+        function addMessage(text, sender) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.classList.add(`${sender}-message`);
+            messageElement.textContent = text;
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
+            return messageElement;
+        }
+
+        // 处理发送按钮点击
+        sendButton.addEventListener('click', function() {
+            const message = userInput.value.trim();
+            if (message) {
+            sendMessageToCoze(message);
+            userInput.value = '';
+            autoResizeTextarea();
+            }
+        });
+
+        // 处理按Enter键发送
+        userInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+            const message = userInput.value.trim();
+            if (message) {
+                sendMessageToCoze(message);
+                userInput.value = '';
+                autoResizeTextarea();
+            }
+            e.preventDefault();
+            }
+        });
+
+        // 初始欢迎消息
+        addMessage('您好！我是智能问答助手，请问有什么可以帮您的吗？', 'bot');
+        });
+
+    </script>
+</body>
+</html>
